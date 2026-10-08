@@ -111,6 +111,16 @@ export function createRouter(service: JunctionService, simulator: RestSimulatorC
   });
 
   router.post('/controller-events', async (req, res) => {
+    // The spec's example ACK has a single actual_state. One state can't confirm a whole junction,
+    // so say clearly what we expect instead of returning a bare validation error.
+    if (req.body?.actual_state !== undefined && req.body?.actual_signals === undefined) {
+      return res.status(422).json({
+        error: 'ACTUAL_SIGNALS_REQUIRED',
+        message:
+          'Commands cover the whole junction, so an ACK must report every signal. Send actual_signals instead of actual_state, ' +
+          'e.g. {"command_id":"cmd-A-3","junction_id":"A","status":"ACK","actual_signals":{"NORTH":"GREEN","SOUTH":"GREEN","EAST":"RED","WEST":"RED"}}',
+      });
+    }
     const parsed = controllerEventSchema.safeParse(req.body);
     if (!parsed.success) return validationFailed(res, 422, parsed.error);
 

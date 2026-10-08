@@ -128,7 +128,11 @@ HTTP (Express routes, zod)        REST simulator ACKs / later MQTT
 curl -X POST localhost:3000/api/sensor-events -H 'Content-Type: application/json' -d '{"event_id":"evt-1","junction_id":"A","direction":"EAST","event_type":"VEHICLE_ARRIVED","vehicle_id":"AMB-1","vehicle_type":"EMERGENCY","sequence_no":1,"timestamp":"2026-10-08T10:00:00Z"}'
 curl -X POST localhost:3000/api/junctions/A/commands -H 'Content-Type: application/json' -d '{"command":"MANUAL_GREEN_REQUEST","direction":"WEST"}'
 curl localhost:3000/api/junctions/A/status
+# Simulate the controller confirming the pending command (take command_id from status.pending_command)
+curl -X POST localhost:3000/api/controller-events -H 'Content-Type: application/json' -d '{"command_id":"cmd-A-3","junction_id":"A","status":"ACK","actual_signals":{"NORTH":"RED","SOUTH":"RED","EAST":"GREEN","WEST":"GREEN"}}'
 ```
+
+The spec's ACK example uses a single `actual_state`. That returns 422 `ACTUAL_SIGNALS_REQUIRED` with the expected shape, because one value can't confirm a four-signal command.
 
 ## Demo walkthrough
 

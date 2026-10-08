@@ -86,7 +86,8 @@ export const createJunctionSchema = z.object({
         })
         .partial()
         .optional(),
-      vehicleWeights: z.record(vehicleType, z.number().nonnegative()).optional(),
+      // partialRecord: z.record() with an enum key would require every vehicle type to be present.
+      vehicleWeights: z.partialRecord(vehicleType, z.number().nonnegative()).optional(),
     })
     .optional(),
 });
