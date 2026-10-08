@@ -4,117 +4,175 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Factory Traffic Control</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='7' y='1' width='10' height='22' rx='3' fill='%231e293b'/><circle cx='12' cy='6' r='2.6' fill='%23ef4444'/><circle cx='12' cy='12' r='2.6' fill='%23f59e0b'/><circle cx='12' cy='18' r='2.6' fill='%2322c55e'/></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Factory Traffic Control</h1>
-    <label>Junction <select id="junction-select"></select></label>
-    <span id="mode-badge" class="badge">-</span>
-    <span id="phase-badge" class="badge">-</span>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="7" y="1" width="10" height="22" rx="3"></rect>
+        <circle cx="12" cy="6" r="2.4" class="r"></circle>
+        <circle cx="12" cy="12" r="2.4" class="y"></circle>
+        <circle cx="12" cy="18" r="2.4" class="g"></circle>
+      </svg>
+      <div>
+        <div class="brand-title">Factory Traffic Control</div>
+        <div class="brand-sub">Internal road junction supervisor</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <label class="junction-picker">
+        <span>Junction</span>
+        <select id="junction-select" aria-label="Junction"></select>
+      </label>
+      <span id="live-indicator" class="live"><span class="live-dot"></span><span id="live-text">Connecting</span></span>
+    </div>
   </header>
 
-  <div id="offline-banner" class="banner banner-offline" hidden>Backend unavailable - retrying...</div>
+  <div id="offline-banner" class="banner banner-offline" hidden>Backend unavailable. Retrying every second...</div>
   <div id="emergency-banner" class="banner banner-emergency" hidden></div>
   <div id="failure-banner" class="banner banner-failure" hidden></div>
 
-  <main>
-    <section class="panel">
-      <h2>Intersection</h2>
-      <div class="intersection">
-        <div class="light" data-dir="NORTH"></div>
-        <div class="light" data-dir="WEST"></div>
-        <div class="center" id="center-label">-</div>
-        <div class="light" data-dir="EAST"></div>
-        <div class="light" data-dir="SOUTH"></div>
+  <main class="layout">
+    <section class="card map-card">
+      <div class="card-head">
+        <h2>Intersection</h2>
+        <div class="pills">
+          <span id="mode-badge" class="pill">-</span>
+          <span id="phase-badge" class="pill pill-outline">-</span>
+        </div>
       </div>
-      <p class="hint">Large lamp = desired (backend). Small dot = confirmed by controller. Striped = unknown.</p>
+
+      <div class="intersection" id="intersection">
+        <div class="road road-v"></div>
+        <div class="road road-h"></div>
+        <div class="crossing">
+          <div class="center-label" id="center-label">-</div>
+          <div class="center-sub" id="center-sub"></div>
+          <div class="stage-bar"><div class="stage-bar-fill" id="stage-bar"></div></div>
+        </div>
+        <div class="approach approach-north" data-dir="NORTH"></div>
+        <div class="approach approach-south" data-dir="SOUTH"></div>
+        <div class="approach approach-east" data-dir="EAST"></div>
+        <div class="approach approach-west" data-dir="WEST"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="legend-lamp"></i> Lit lamp = desired by backend</span>
+        <span><i class="legend-chip"></i> Chip = confirmed by controller</span>
+        <span><i class="legend-unknown"></i> Striped = unknown</span>
+      </div>
     </section>
 
-    <section class="panel">
-      <h2>Junction status</h2>
-      <dl class="facts">
-        <dt>Controller</dt><dd id="controller-status">-</dd>
-        <dt>Stage</dt><dd id="stage">-</dd>
-        <dt>Signals confirmed</dt><dd id="confirmed">-</dd>
-        <dt>Pending command</dt><dd id="pending">-</dd>
-        <dt>Manual override</dt><dd id="manual">-</dd>
-        <dt>Emergency queue</dt><dd id="emergencies">-</dd>
-      </dl>
-      <table class="queues">
-        <thead><tr><th></th><th>NORTH</th><th>SOUTH</th><th>EAST</th><th>WEST</th></tr></thead>
-        <tbody>
-          <tr><th>Queue</th><td id="q-NORTH">-</td><td id="q-SOUTH">-</td><td id="q-EAST">-</td><td id="q-WEST">-</td></tr>
-          <tr><th>Sensor</th><td id="s-NORTH">-</td><td id="s-SOUTH">-</td><td id="s-EAST">-</td><td id="s-WEST">-</td></tr>
-        </tbody>
-      </table>
+    <section class="card status-card">
+      <div class="card-head"><h2>Junction status</h2></div>
+      <div class="stats">
+        <div class="stat"><span class="stat-label">Controller</span><span class="stat-value" id="controller-status">-</span></div>
+        <div class="stat"><span class="stat-label">Signals confirmed</span><span class="stat-value" id="confirmed">-</span></div>
+        <div class="stat"><span class="stat-label">Stage</span><span class="stat-value" id="stage">-</span></div>
+        <div class="stat"><span class="stat-label">Pending command</span><span class="stat-value" id="pending">-</span></div>
+        <div class="stat"><span class="stat-label">Manual override</span><span class="stat-value" id="manual">-</span></div>
+        <div class="stat"><span class="stat-label">Emergency queue</span><span class="stat-value" id="emergencies">-</span></div>
+      </div>
+
+      <h3>Queues</h3>
+      <div class="queues">
+        <div class="queue"><span class="queue-dir">North</span><span class="queue-count" id="q-NORTH">-</span><span class="sensor" id="s-NORTH">-</span></div>
+        <div class="queue"><span class="queue-dir">South</span><span class="queue-count" id="q-SOUTH">-</span><span class="sensor" id="s-SOUTH">-</span></div>
+        <div class="queue"><span class="queue-dir">East</span><span class="queue-count" id="q-EAST">-</span><span class="sensor" id="s-EAST">-</span></div>
+        <div class="queue"><span class="queue-dir">West</span><span class="queue-count" id="q-WEST">-</span><span class="sensor" id="s-WEST">-</span></div>
+      </div>
+
       <h3>Alerts</h3>
-      <ul id="alerts" class="alerts"><li class="muted">none</li></ul>
+      <ul id="alerts" class="alerts"><li class="alert-none">No active alerts</li></ul>
     </section>
 
-    <section class="panel">
-      <h2>Manual control</h2>
-      <label>Operator <input id="operator" value="admin" maxlength="100"></label>
-      <div class="buttons">
-        <button data-manual="NORTH">Green NORTH</button>
-        <button data-manual="SOUTH">Green SOUTH</button>
-        <button data-manual="EAST">Green EAST</button>
-        <button data-manual="WEST">Green WEST</button>
+    <section class="card">
+      <div class="card-head"><h2>Manual control</h2></div>
+      <label class="field">
+        <span>Operator</span>
+        <input id="operator" value="admin" maxlength="100">
+      </label>
+      <div class="dir-pad">
+        <button class="btn" data-manual="NORTH">North</button>
+        <button class="btn" data-manual="WEST">West</button>
+        <button id="return-auto" class="btn btn-ghost">Auto</button>
+        <button class="btn" data-manual="EAST">East</button>
+        <button class="btn" data-manual="SOUTH">South</button>
       </div>
-      <button id="return-auto" class="secondary">Return to automatic</button>
-      <p class="hint">Requests go to the backend, which runs the same YELLOW / ALL_RED sequence as automatic mode.</p>
+      <p class="hint">Requests a green for that direction's phase. The backend still runs YELLOW and ALL_RED first, and an emergency always wins. "Auto" returns the junction to automatic scheduling.</p>
     </section>
 
-    <section class="panel">
-      <h2>Simulator</h2>
-      <form id="sensor-form" class="grid-form">
-        <label>Event
+    <section class="card">
+      <div class="card-head"><h2>Simulator</h2><span class="card-tag">no hardware needed</span></div>
+      <form id="sensor-form" class="form-grid">
+        <label class="field">
+          <span>Event</span>
           <select name="event_type">
             <option value="VEHICLE_ARRIVED">Vehicle arrived</option>
             <option value="VEHICLE_CLEARED">Vehicle cleared</option>
           </select>
         </label>
-        <label>Direction
+        <label class="field">
+          <span>Direction</span>
           <select name="direction">
             <option>NORTH</option><option>SOUTH</option><option>EAST</option><option>WEST</option>
           </select>
         </label>
-        <label>Vehicle type
+        <label class="field">
+          <span>Vehicle type</span>
           <select name="vehicle_type">
-            <option>EMPLOYEE_VEHICLE</option><option>FORKLIFT</option><option>TRUCK</option><option>EMERGENCY</option>
+            <option value="EMPLOYEE_VEHICLE">Employee vehicle</option>
+            <option value="FORKLIFT">Forklift</option>
+            <option value="TRUCK">Truck</option>
+            <option value="EMERGENCY">Emergency</option>
           </select>
         </label>
-        <label>Vehicle id
-          <span class="row"><input name="vehicle_id" required maxlength="100"><button type="button" id="new-vehicle" class="secondary">New</button></span>
+        <label class="field">
+          <span>Vehicle id</span>
+          <span class="input-row">
+            <input name="vehicle_id" required maxlength="100">
+            <button type="button" id="new-vehicle" class="btn btn-ghost btn-small" title="Generate a new id">New</button>
+          </span>
         </label>
-        <div class="buttons">
-          <button type="submit">Send event</button>
-          <button type="button" id="resend" class="secondary" disabled>Send same event again</button>
+        <div class="actions">
+          <button type="submit" class="btn">Send sensor event</button>
+          <button type="button" id="resend" class="btn btn-ghost" disabled>Send same event again</button>
         </div>
       </form>
 
-      <h3>Controller</h3>
-      <div class="buttons">
-        <button data-controller="OFFLINE" class="warn">Controller OFFLINE</button>
-        <button data-controller="ONLINE" class="secondary">Controller ONLINE</button>
-        <button data-sensor="OFFLINE" class="warn">Sensor OFFLINE (selected direction)</button>
-        <button data-sensor="ONLINE" class="secondary">Sensor ONLINE</button>
+      <h3>Devices</h3>
+      <div class="actions">
+        <button data-controller="OFFLINE" class="btn btn-warn">Controller offline</button>
+        <button data-controller="ONLINE" class="btn btn-ghost">Controller online</button>
+        <button data-sensor="OFFLINE" class="btn btn-warn">Sensor offline</button>
+        <button data-sensor="ONLINE" class="btn btn-ghost">Sensor online</button>
       </div>
-      <label class="inline"><input type="checkbox" id="auto-ack" checked> Auto-ACK every command</label>
-      <div class="buttons">
-        <button data-ack="ACK" class="secondary">ACK pending</button>
-        <button data-ack="NACK" class="warn">NACK pending</button>
-        <button data-ack="WRONG" class="warn">ACK with wrong state</button>
+      <p class="hint">Sensor buttons use the direction selected above.</p>
+
+      <h3>Controller acknowledgements</h3>
+      <label class="switch">
+        <input type="checkbox" id="auto-ack" checked>
+        <span class="switch-track"></span>
+        <span>Auto-ACK every command</span>
+      </label>
+      <div class="actions">
+        <button data-ack="ACK" class="btn btn-ghost">ACK pending</button>
+        <button data-ack="NACK" class="btn btn-warn">NACK pending</button>
+        <button data-ack="WRONG" class="btn btn-warn">ACK with wrong state</button>
       </div>
-      <p id="last-result" class="result muted">No requests sent yet.</p>
+      <p id="last-result" class="result">No requests sent yet.</p>
     </section>
 
-    <section class="panel wide">
-      <h2>Recent activity</h2>
-      <table class="history">
-        <thead><tr><th>Time</th><th>Event</th><th>Dir</th><th>From</th><th>To</th><th>Command</th><th>Details</th></tr></thead>
-        <tbody id="history"></tbody>
-      </table>
+    <section class="card activity-card">
+      <div class="card-head"><h2>Recent activity</h2><span class="card-tag">last 30 audit events</span></div>
+      <div class="table-wrap">
+        <table class="history">
+          <thead><tr><th>Time</th><th>Event</th><th>Dir</th><th>Transition</th><th>Command</th><th>Details</th></tr></thead>
+          <tbody id="history"><tr><td colspan="6" class="empty">Waiting for data...</td></tr></tbody>
+        </table>
+      </div>
     </section>
   </main>
 
