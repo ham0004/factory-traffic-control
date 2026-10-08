@@ -2,7 +2,7 @@
 
 A small event-driven backend that runs the traffic signals at internal factory junctions. It takes in vehicle sensor events, keeps a queue for each direction and picks a safe phase. It also handles emergency and manual priority, tracks what the physical controller has actually confirmed, and recovers safely after a restart. A plain HTML dashboard shows the backend state and lets you simulate sensors and the controller.
 
-Live demo: _not deployed yet (see [Deploy](#deploy))_
+Live demo: https://factory-traffic-control.onrender.com (free tier: the first request after ~15 min idle takes about a minute while the service wakes up)
 
 ## Run locally
 
@@ -162,11 +162,19 @@ The dashboard is at `/`. It polls every 1s, which is simple, needs no extra infr
 
 ## Deploy
 
-1. On Railway, create a project and choose Deploy from GitHub repo.
-2. Add a volume mounted at `/data`.
-3. Set `DB_PATH=/data/traffic.db`.
-4. Set the start command to `npm start`.
-5. Check the current free/trial limits, then paste the public URL at the top of this README.
+The live demo runs on a Render free web service:
+
+- Build command: `npm install`
+- Start command: `npm start`
+- Environment: `NODE_VERSION=22`
+- Health check: `/health`
+
+Limits of the free tier:
+
+- It sleeps after about 15 minutes idle, so the first request then takes about a minute.
+- It has no persistent disk, so the SQLite file is wiped on every redeploy or restart. The app simply re-seeds Junction A. To demo restart recovery with data kept, run it locally.
+
+For a deployment that keeps its data, use any host with a persistent volume (a Render paid disk, a Railway volume, a VM) and point `DB_PATH` at it, e.g. `DB_PATH=/data/traffic.db`.
 
 ## Not done / next steps
 
