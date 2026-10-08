@@ -37,6 +37,7 @@ export function createInitialState(junctionId: string, config: JunctionConfig, n
     mode: 'AUTOMATIC',
     stage: { kind: 'ALL_RED', nextPhase: firstPhase, enteredAt: now },
     lastGreenPhase: firstPhase,
+    phaseServedAt: {},
     controllerStatus: 'UNKNOWN',
     sensorStatus: { NORTH: 'ONLINE', SOUTH: 'ONLINE', EAST: 'ONLINE', WEST: 'ONLINE' },
     actualSignals: unknownSignals(),
@@ -189,6 +190,8 @@ function enterStage(ctx: Ctx, next: Stage, reason: string) {
   });
   ctx.s.stage = next;
   if (next.kind === 'GREEN') ctx.s.lastGreenPhase = next.phase;
+  // A phase counts as served while it is green; YELLOW marks the end of that service.
+  if (next.kind === 'GREEN' || next.kind === 'YELLOW') ctx.s.phaseServedAt[next.phase] = ctx.now;
   sendDesired(ctx, reason);
 }
 
@@ -200,6 +203,7 @@ function enterDegraded(ctx: Ctx, reason: string) {
 
   if (s.stage.kind !== 'ALL_RED') {
     const resumePhase = s.stage.kind === 'GREEN' ? s.stage.phase : s.stage.nextPhase;
+    if (s.stage.kind === 'GREEN') s.phaseServedAt[s.stage.phase] = now;
     const forced: Stage = { kind: 'ALL_RED', nextPhase: resumePhase, enteredAt: now };
     audit(ctx, 'SIGNAL_TRANSITION', {
       previousState: describeStage(s.stage),
@@ -456,6 +460,11 @@ function onControllerAck(ctx: Ctx, e: Extract<Input, { type: 'CONTROLLER_ACK' }>
   }
 
   audit(ctx, 'SIGNAL_CONFIRMED', { commandId: e.commandId, newState: describeStage(s.stage) });
+  // Stage timers run from the controller's confirmation, not from when we asked.
+  // Otherwise a slow ACK would eat into the yellow and all-red clearance time.
+  s.stage = { ...s.stage, enteredAt: ctx.now };
+  if (s.stage.kind === 'GREEN') s.phaseServedAt[s.stage.phase] = ctx.now;
+
   if (s.mode === 'DEGRADED' && sameSignals(e.actualSignals, allRed())) recoverFromDegraded(ctx);
 }
 

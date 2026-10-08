@@ -58,6 +58,8 @@ export interface JunctionState {
   mode: Mode;
   stage: Stage;
   lastGreenPhase: PhaseId;
+  // When each phase last had green (its start while green, its end once it went yellow).
+  phaseServedAt: Record<PhaseId, number>;
   controllerStatus: DeviceStatus;
   sensorStatus: Record<Direction, DeviceStatus>;
   actualSignals: ObservedSignals;

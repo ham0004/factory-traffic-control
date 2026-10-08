@@ -73,7 +73,8 @@ export class Repository {
         lastSequenceNo: v.last_sequence_no,
       };
     }
-    return { ...JSON.parse(row.state_json), vehicles };
+    // phaseServedAt was added later; state saved before that simply starts with no history.
+    return { phaseServedAt: {}, ...JSON.parse(row.state_json), vehicles };
   }
 
   // Vehicles go to their own table (queue = COUNT of WAITING rows); everything else is one JSON blob.

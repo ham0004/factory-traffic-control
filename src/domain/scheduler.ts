@@ -12,8 +12,11 @@ function offlineSensorCount(state: JunctionState, phase: PhaseId, config: Juncti
   return config.phases[phase].filter((d) => state.sensorStatus[d] === 'OFFLINE').length;
 }
 
-function oldestWaitMs(vehicles: Vehicle[], now: number): number {
-  return vehicles.reduce((oldest, v) => Math.max(oldest, now - (v.arrivedAt ?? now)), 0);
+// A vehicle stops "waiting" whenever its phase gets green. Counting only from arrival would make a vehicle
+// whose CLEARED event never comes look older every cycle and trigger starvation over and over.
+function oldestWaitMs(state: JunctionState, phase: PhaseId, vehicles: Vehicle[], now: number): number {
+  const servedAt = state.phaseServedAt[phase] ?? 0;
+  return vehicles.reduce((oldest, v) => Math.max(oldest, now - Math.max(v.arrivedAt ?? now, servedAt)), 0);
 }
 
 // A direction with a dead sensor counts as having traffic, so missing data can't starve it.
@@ -27,7 +30,7 @@ export function scorePhase(state: JunctionState, phase: PhaseId, now: number, co
   const vehicles = waitingIn(state, phase, config);
   const weights = vehicles.reduce((sum, v) => sum + config.vehicleWeights[v.vehicleType ?? 'EMPLOYEE_VEHICLE'], 0);
   const assumed = offlineSensorCount(state, phase, config) * config.vehicleWeights.EMPLOYEE_VEHICLE;
-  const waitBonus = (config.waitWeightPerSecond * oldestWaitMs(vehicles, now)) / 1000;
+  const waitBonus = (config.waitWeightPerSecond * oldestWaitMs(state, phase, vehicles, now)) / 1000;
   return weights + assumed + waitBonus;
 }
 
@@ -35,7 +38,7 @@ function mostStarvedPhase(state: JunctionState, candidates: PhaseId[], now: numb
   let starved: PhaseId | null = null;
   let longestWait = config.starvationMs;
   for (const phase of candidates) {
-    const wait = oldestWaitMs(waitingIn(state, phase, config), now);
+    const wait = oldestWaitMs(state, phase, waitingIn(state, phase, config), now);
     if (wait > longestWait) {
       starved = phase;
       longestWait = wait;

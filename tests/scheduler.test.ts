@@ -12,6 +12,7 @@ function greenState(phase: string, enteredAt = 0): JunctionState {
     mode: 'AUTOMATIC',
     stage: { kind: 'GREEN', phase, enteredAt },
     lastGreenPhase: phase,
+    phaseServedAt: { [phase]: enteredAt },
     controllerStatus: 'ONLINE',
     sensorStatus: { NORTH: 'ONLINE', SOUTH: 'ONLINE', EAST: 'ONLINE', WEST: 'ONLINE' },
     actualSignals: unknownSignals(),
@@ -84,6 +85,16 @@ describe('scheduler', () => {
 
     expect(pickNextPhase(state, 115 * SECOND, config)).toBeNull();
     expect(pickNextPhase(state, 121 * SECOND, config)).toBe('EAST_WEST');
+  });
+
+  it('does not treat a vehicle that was never cleared as starving', () => {
+    // EAST_WEST had a green that ended at 295s; the EAST vehicle from t=0 never sent VEHICLE_CLEARED.
+    const state = greenState('NORTH_SOUTH', 300 * SECOND);
+    state.phaseServedAt = { EAST_WEST: 295 * SECOND, NORTH_SOUTH: 300 * SECOND };
+    addVehicle(state, 'EAST', 'EMPLOYEE_VEHICLE', 0);
+    addVehicle(state, 'NORTH', 'EMPLOYEE_VEHICLE', 290 * SECOND);
+
+    expect(pickNextPhase(state, 311 * SECOND, config)).toBeNull();
   });
 
   it('caps green at 90s when the other phase has demand', () => {

@@ -247,6 +247,31 @@ describe('controller acknowledgements', () => {
     expect(sim.state.mode).toBe('MANUAL');
   });
 
+  it('runs yellow and all-red timers from the ACK, so a slow controller cannot shorten clearance', () => {
+    const sim = greenSim();
+    sim.apply({ type: 'MANUAL_GREEN_REQUEST', direction: 'WEST' });
+    sim.run(9 * SECOND);
+    sim.run(SECOND, false); // min green reached: YELLOW requested, no ACK yet
+    expect(sim.state.stage.kind).toBe('YELLOW');
+
+    sim.now += 2900; // ACK arrives just inside the 3s timeout
+    sim.apply({ type: 'TICK' });
+    sim.ack();
+
+    sim.run(4 * SECOND); // 4s of confirmed yellow is not enough
+    expect(sim.state.stage.kind).toBe('YELLOW');
+    sim.run(SECOND, false);
+    expect(sim.state.stage.kind).toBe('ALL_RED');
+
+    sim.now += 2500; // slow ACK for ALL_RED
+    sim.apply({ type: 'TICK' });
+    sim.ack();
+    sim.run(SECOND);
+    expect(sim.state.stage.kind).toBe('ALL_RED'); // still needs the full 2s after confirmation
+    sim.run(SECOND);
+    expect(sim.state.stage).toMatchObject({ kind: 'GREEN', phase: 'EAST_WEST' });
+  });
+
   it('retries once, then fails safe to ALL_RED in DEGRADED', () => {
     const sim = greenSim();
     sim.apply({ type: 'MANUAL_GREEN_REQUEST', direction: 'WEST' });
