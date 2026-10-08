@@ -6,7 +6,7 @@ Live demo: _not deployed yet (see [Deploy](#deploy))_
 
 ## Run locally
 
-Requires Node 20+.
+Requires Node 22+.
 
 ```bash
 npm install
